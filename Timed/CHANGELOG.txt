@@ -1,0 +1,14 @@
+Timed AddOn
+(c) Siarkowy, 2011-2012
+
+CHANGE LOG
+
+1.1.1
+  * Nil error with nonexistent queue shift fixed (Queue.lua, line 75).
+
+1.1.0
+  * Optional functionality to perform only in raid instances added and enabled by default.
+  * Fixed version publishing when joining group.
+
+1.0.0
+  * Initial version.
