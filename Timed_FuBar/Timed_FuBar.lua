@@ -1,5 +1,5 @@
 local Timed = Timed
-local Fu = Timed:NewModule("Fu", "AceEvent-2.0", "FuBarPlugin-2.0")
+local Fu = Timed:NewModule("Timed", "AceEvent-2.0", "FuBarPlugin-2.0")
 local tablet = AceLibrary("Tablet-2.0")
 
 Fu.title					= "Timed"
