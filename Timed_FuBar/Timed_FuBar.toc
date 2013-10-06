@@ -1,9 +1,0 @@
-## Interface: 20400
-## Title: Timed [|cffeda55fFuBar|r]
-## Notes: Tablet style display for Timed.
-## Author: Siarkowy
-## Version: 1.0.0
-## Dependencies: Timed
-
-embeds.xml
-Timed_FuBar.lua
