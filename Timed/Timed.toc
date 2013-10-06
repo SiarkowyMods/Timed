@@ -1,10 +1,30 @@
 ## Interface: 20400
-## Title: Timed
-## Notes: Synchronized .debug threatlist data distributor particularly for raiding use by Siarkowy. Usage: /timed
-## Author: Siarkowy
-## Version: 1.1.1
-## SavedVariables: TimedDB
 
-embeds.xml
+## Title: Timed
+## Notes: Synchronized .debug threatlist data distributor by Siarkowy. Usage: /timed
+## Author: Siarkowy <siarkowy@siarkowy.net>
+## X-Website: https://github.com/Siarkowy/Timed
+## X-Category: Combat
+## X-License: BSD-2.0
+## OptionalDeps: Ace3
+## SavedVariables: Timed2DB
+## Version: 2.0a
+
+# Libs
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+Libs\AceAddon-3.0\AceAddon-3.0.xml
+Libs\AceEvent-3.0\AceEvent-3.0.xml
+Libs\AceTimer-3.0\AceTimer-3.0.xml
+Libs\AceDB-3.0\AceDB-3.0.xml
+Libs\AceConsole-3.0\AceConsole-3.0.xml
+Libs\AceGUI-3.0\AceGUI-3.0.xml
+Libs\AceConfig-3.0\AceConfig-3.0.xml
+Libs\AceComm-3.0\AceComm-3.0.xml
+
+# Core
 Timed.lua
-modules.xml
+gauge.lua
+gauges.lua
+slash.lua

@@ -1,98 +1,271 @@
-﻿--
--- ACE ADDON PROLOG
---
+--------------------------------------------------------------------------------
+-- Timed (c) 2011-2013 by Siarkowy
+-- Released under the terms of BSD 2.0 license.
+--------------------------------------------------------------------------------
 
-Timed = AceLibrary("AceAddon-2.0"):new("AceEvent-2.0", "AceDB-2.0", "AceModuleCore-2.0", "AceConsole-2.0", "AceComm-2.0")
+TIMED = "Timed"
 
+-- Addon object ----------------------------------------------------------------
+
+Timed = LibStub("AceAddon-3.0"):NewAddon(
+    TIMED,
+
+    -- embeds:
+    "AceComm-3.0",
+    "AceConsole-3.0",
+    "AceEvent-3.0",
+    "AceTimer-3.0"
+)
+
+-- Variables -------------------------------------------------------------------
+
+-- Upvalues
 local Timed = Timed
+local ChatFrame3 = ChatFrame3
+local GetTime = GetTime
+local UnitAffectingCombat = UnitAffectingCombat
+local UnitGUID = UnitGUID
+local UnitName = UnitName
+local UnitInRaid = UnitInRaid
+local format = format
+local time = time
 
-Timed.OnCommReceive = { }
+-- Frequently used values
+local COMM_DELIM    = "|"
+local COMM_PREFIX   = "TT2"  -- Timed Threat
+local GUID_NONE     = UnitGUID("none")
+local PLAYER        = UnitName("player")
 
-function Timed:OnInitialize()
-	self.player = ( UnitName("player") )
-	
-	-- database stuff
-	self:RegisterDB("TimedDB")
-	self:RegisterDefaults("profile", {
-		debug = nil,
-		inRaidOnly = true,
-		queryDelay = 10,
-		queryMessage = ".debug threatlist",
-	})
-	
-	self.lastQueryTime = 0
-	
-	-- data banks
-	self.guids 		= { } -- GUID table
-	self.tank		= { } -- tank data
-	self.target		= { } -- target data
-	self.threat 	= { } -- threat data
-	self.versions 	= { } -- roster addon versions
-	
-	-- versioning
-	self:RegisterVersion(self.player, self.version)
-	
-	-- comm
-	self.commPrefix = "TMD"
-	self:SetCommPrefix(self.commPrefix)
-	self:RegisterMemoizations{
-		-- Core
-		"THREAT",
-		"COOLDOWN",
-		-- Queue
-		"QUEUE_BEGIN",
-		"QUEUE_END",
-		"QUEUE_JOIN",
-		-- Hello
-		"HELLO",
-		"HELLO_REPLY",
-		-- GUIDs
-		"GUID_QUERY",
-		"GUID_PRESENT",
-		"GUID_EXPLAIN",
-		"GUID_EXPLANATION",
-	}
+-- Threat situation levels
+local SITUATION_SAFE        = 1
+local SITUATION_UNSAFE      = 2
+local SITUATION_TANKING     = 3
+local SITUATION_OVERAGGRO   = 4
+
+-- Threat situation labels
+local SITUATIONS = {
+    SITUATION_SAFE          = "Safe",
+    SITUATION_UNSAFE        = "Unsafe",
+    SITUATION_TANKING       = "Tanking",
+    SITUATION_OVERAGGRO     = "Overaggroing",
+}
+
+-- Locals updated on :Reconfigure().
+local
+    autodump,       -- threat info dump to chat frame flag
+    interval,       -- min. interval between threat queries per player
+    message,        -- query message to be sent
+    threshold,      -- threshold for overaggro warnings
+    log,            -- log table reference
+    logging,        -- event logging flag
+    verbose,        -- verbose mode flag (dumping info to chat frame)
+    warnings,       -- enable flag for overaggro warnings
+    _               -- dummy
+
+-- Core data storages
+local gauges = { }  -- array of threat gauges
+local threat = { }  -- threat info array by guid
+local targets = { } -- target guids of group members
+
+-- Make some locals accessible
+Timed.gauges = gauges
+Timed.threat = threat
+Timed.targets = targets
+
+-- Utils -----------------------------------------------------------------------
+
+local DEFAULT_CHAT_FRAME = DEFAULT_CHAT_FRAME
+
+-- Chat functions
+function Timed:Printf(...) self:Print(format(...)) end
+function Timed:Echo(...) DEFAULT_CHAT_FRAME:AddMessage(format(...)) end
+
+-- Group and aggro functions
+function Timed.GetThreatSituation(factor)
+    if factor > 1 then return SITUATION_OVERAGGRO
+    elseif factor == 1 then return SITUATION_TANKING
+    elseif factor >= 0.75 then return SITUATION_UNSAFE
+    else return SITUATION_SAFE end
 end
+
+function Timed.IsInGroup()
+    return UnitInRaid("player") or GetNumPartyMembers() > 0
+end
+
+function Timed.UnitInMeleeRange(unitID) -- from Threat-2.0
+    return UnitExists(unitID)
+       and UnitIsVisible(unitID)
+       and CheckInteractDistance(unitID, 3)
+end
+
+function Timed.UnitIsQueryable(unit)
+    return UnitExists("target")
+        and not UnitIsPlayer("target")
+        and not UnitIsFriend("target", "player")
+end
+
+-- Localize some functions
+local IsInGroup = Timed.IsInGroup
+local UnitIsQueryable = Timed.UnitIsQueryable
+
+-- Core ------------------------------------------------------------------------
 
 function Timed:OnEnable()
-	-- register events
-	self:RegisterEvent("CHAT_MSG_SYSTEM")
-	self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-	self:RegisterEvent("PARTY_MEMBERS_CHANGED")
-	self:RegisterEvent("PLAYER_ENTERING_WORLD")
-	self:RegisterEvent("UNIT_TARGET")
-	self:RegisterEvent("Timed_OnTimer") -- timer ready
-	-- enable comm
-	self:RegisterComm(self.commPrefix, "GROUP", "OnCommReceive")
-	self:RegisterComm(self.commPrefix, "WHISPER", "OnCommReceive")
-	-- update and broadcast target
-	self:TargetUpdate()
-	self:TankUpdate()
-	self:PARTY_MEMBERS_CHANGED()
-	self:BroadcastQueueJoin(self.target.guid)
+    self:Reconfigure()
+
+    self:RegisterEvent("PARTY_MEMBERS_CHANGED", "OnPartyUpdate")
+    self:RegisterEvent("PLAYER_TARGET_CHANGED", "OnTargetUpdate")
+    self:RegisterEvent("UNIT_FLAGS", "OnTargetUpdate")
+    self:RegisterComm(COMM_PREFIX, "OnCommReceived")
+    self:RegisterMessage("TIMED_THREAT_UPDATE", "OnThreatUpdate")
+
+    self:OnPartyUpdate()
+    self:OnTargetUpdate()
+
+    --DEBUG
+    self:ScheduleRepeatingTimer(function() self:OnThreatUpdate(UnitGUID("player"), 2, "u1", 3, "u2", 2, "u3", 1) end, 3)
 end
 
-function Timed:PLAYER_ENTERING_WORLD()
-	self.raid = ( select(2, IsInInstance()) == "raid" )
+function Timed:OnDisable()
+    --TODO:
+    -- join empty queue
 end
-
---
--- UTIL
---
 
 do
-	local pairs = pairs
-	local type = type
-	
-	local function wipe(t)
-		for k, _ in pairs(t) do
-			if type(t[k]) == "table" then
-				wipe(t[k])
-			end
-			t[k] = nil
-		end
-		t = nil
-	end
-	Timed.util = Timed.util or { }
-	Timed.util.wipe = wipe
+    local was
+
+    function Timed:OnPartyUpdate()
+        self:Print("OnPartyUpdate()") --DEBUG
+
+        local is = IsInGroup()
+
+        if not was and is then
+            -- broadcast version --TODO
+        end
+
+        local UnitInGroup = UnitInRaid("player") and UnitInRaid or UnitInParty
+
+        for name in pairs(targets) do
+            if not UnitInGroup(name) then
+                targets[name] = nil
+            end
+        end
+
+        was = is
+    end
+end
+
+function Timed:OnTargetUpdate(_, unit)
+    if unit and unit ~= "target" then
+        return
+    end
+
+    local guid = UnitIsQueryable("target") and UnitGUID("target") or GUID_NONE
+
+    if self:GetTarget(PLAYER) == guid then
+        return
+    end
+
+    self:SetTarget(PLAYER, guid)
+
+    if IsInGroup() then
+        self:SendGroupComm("Q", guid)
+    end
+
+    local unit = "target"
+    self:Printf("Target: %s <%s> <combat: %d> <alive: %s>", unit, UnitName(unit) or NONE, UnitAffectingCombat("target") or 0, not UnitIsDead(unit) and 1 or 0)
+end
+
+function Timed:OnThreatUpdate(guid, tank, ...)
+    for gid, gauge in pairs(gauges) do
+        gauge:Update(guid, tank, ...)
+    end
+end
+
+function Timed:Log(...)
+    if verbose then self:Print(ChatFrame3, format(...)) end
+    if logging then log[time() + GetTime() % 1] = format(...) end
+end
+
+function Timed:Reconfigure()
+    local db = self.db.profile
+
+    autodump    = db.autodump
+    interval    = db.interval
+    log         = db.log
+    logging     = db.logging
+    message     = db.message
+    threshold   = db.threshold
+    verbose     = db.verbose
+    warnings    = db.warnings
+end
+
+function Timed:GetTarget(player)
+    return targets[player]
+end
+
+function Timed:SetTarget(player, guid)
+    assert(player and guid)
+    targets[player] = guid
+    self:Log("%s targeted %s.", player, guid)
+end
+
+--- Loads saved gauges on Timed initialization.
+function Timed:LoadGauges()
+    for unit in pairs(self.db.profile.gauges) do
+        self:CreateGauge(unit)
+    end
+
+    self:UnregisterEvent("VARIABLES_LOADED")
+end
+
+-- Comm ------------------------------------------------------------------------
+
+function Timed:OnCommReceived(...)
+    self:Print(...)
+end
+
+function Timed:SendGroupComm(...)
+    self:SendCommMessage(COMM_PREFIX, strjoin(COMM_DELIM, ...),
+        UnitInRaid("player") and "RAID" or "PARTY")
+end
+
+function Timed:SendWhisperComm(target, ...)
+    self:SendCommMessage(COMM_PREFIX, strjoin(COMM_DELIM, ...),
+        "WHISPER", target)
+end
+
+-- Initialization --------------------------------------------------------------
+
+function Timed:OnInitialize()
+    local defaults = {
+        profile = {
+            autodump    = true,
+            gauges      = { target = true },
+            interval    = 10,
+            log         = {},
+            logging     = false,
+            message     = ".debug threatlist",
+            threshold   = 0.75,
+            verbose     = false,
+            warnings    = true,
+        }
+    }
+
+    -- initialize database
+    self.db = LibStub("AceDB-3.0"):New("Timed2DB", defaults, DEFAULT)
+
+    -- slash command
+    LibStub("AceConfig-3.0"):RegisterOptionsTable("Timed", self.slash)
+    self:RegisterChatCommand("timed", "OnSlashCmd")
+
+    -- interface options stuff
+    self.options = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("Timed", "Timed")
+    self.options.default = function() self.db:ResetProfile() self:Reconfigure() end
+
+    -- load gauges on time
+    self:RegisterEvent("VARIABLES_LOADED", "LoadGauges")
+
+    -- prevent next calls
+    self.OnInitialize = nil
 end
