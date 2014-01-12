@@ -1,8 +1,6 @@
 ![icon](http://siarkowy.net/img/Timed.ico32.png) Timed
 =====
 
-Synchronized .debug threatlist data distributor by Siarkowy. Usage: /timed [Wow 2.4.3]
-=======
 Synchronized `.debug threatlist` data distributor by Siarkowy.
 
 Compatible with World of Warcraft patch 2.4.3 (Burning Crusade).
