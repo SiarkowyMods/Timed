@@ -10,6 +10,7 @@ TIMED = "Timed"
 Timed = LibStub("AceAddon-3.0"):NewAddon(
     {
         author = GetAddOnMetadata(TIMED, "Author"),
+        cooldowns = { }, -- player query cooldowns
         gauges = { },   -- array of threat gauges
         targets = { },  -- target guids of group members
         threat = { },   -- threat info array by guid
@@ -31,6 +32,7 @@ Timed = LibStub("AceAddon-3.0"):NewAddon(
 -- Upvalues
 local Timed = Timed
 local ChatFrame3 = ChatFrame3
+local GetNetStats = GetNetStats
 local GetTime = GetTime
 local UnitAffectingCombat = UnitAffectingCombat
 local UnitGUID = UnitGUID
@@ -62,6 +64,7 @@ local
     _               -- dummy
 
 -- Core data storages
+local cooldowns = Timed.cooldowns
 local gauges = Timed.gauges
 local threat = Timed.threat
 local targets = Timed.targets
@@ -82,8 +85,9 @@ function Timed:Log(...)
 end
 
 -- Group functions
-function Timed.IsInGroup()
-    return UnitInRaid("player") or GetNumPartyMembers() > 0
+function Timed.IsInGroup(name)
+    if not name then name = "player" end
+    return UnitInRaid(name) or UnitInParty(name) and GetNumPartyMembers() > 0
 end
 
 function Timed.UnitInMeleeRange(unitID) -- from Threat-2.0
@@ -95,17 +99,33 @@ end
 function Timed.UnitIsQueryable(unit)
     return UnitExists(unit)
         and UnitAffectingCombat(unit)
-        and not UnitIsDead(unit)
         and not UnitIsPlayer(unit)
         and not UnitIsFriend(unit, "player")
 end
 
+-- Time functions
+function Timed.GetLag()
+    return select(3, GetNetStats()) / 1000
+end
+
+function Timed.Rel2AbsTime(time)
+    return GetTime() + time
+end
+
+function Timed.Abs2RelTime(time)
+    local t = time - GetTime()
+    return t > 0 and t or 0
+end
+
 -- Localize functions
+local Abs2RelTime = Timed.Abs2RelTime
+local GetLag = GetLag
 local IsInGroup = Timed.IsInGroup
+local Rel2AbsTime = Timed.Rel2AbsTime
 local UnitInMeleeRange = Timed.UnitInMeleeRange
 local UnitIsQueryable = Timed.UnitIsQueryable
 
--- Core ------------------------------------------------------------------------
+-- Event handlers --------------------------------------------------------------
 
 function Timed:OnEnable()
     self:SetTarget(PLAYER, GUID_NONE)
@@ -154,7 +174,9 @@ do
             local guid = UnitGUID("target")
             local thr = tconcat(data, COMM_DELIM)
 
+            self:SetCooldown(PLAYER, Rel2AbsTime(interval - 3 * GetLag()))
             self:SetThreat(guid, thr)
+
             if IsInGroup() then
                 self:SendThreat(guid)
             end
@@ -190,13 +212,11 @@ do
         local is = IsInGroup()
 
         if is and not was then
-            self:SendVersion(nil)
+            self:SendHello()
         end
 
-        local UnitInGroup = UnitInRaid("player") and UnitInRaid or UnitInParty
-
         for name in pairs(targets) do
-            if not UnitInGroup(name) then
+            if name ~= PLAYER and not IsInGroup(name) then
                 targets[name] = nil
             end
         end
@@ -235,8 +255,10 @@ function Timed:TIMED_THREAT_UPDATE(e, guid, info)
     end
 end
 
+-- Core ------------------------------------------------------------------------
+
 function Timed:GetCooldown(player)
-    return targets[assert(player)]
+    return cooldowns[assert(player)]
 end
 
 function Timed:GetTarget(player)
@@ -252,7 +274,7 @@ function Timed:GetVersion(player)
 end
 
 function Timed:SetCooldown(player, time)
-    cooldowns[assert(player)] = assert(tonumber(time))
+    cooldowns[assert(player)] = tonumber(time) or 0
 end
 
 function Timed:SetTarget(player, guid)
@@ -275,24 +297,17 @@ function Timed:SendCooldown(player)
 end
 
 function Timed:SendTarget(player)
-    self:SendComm(player, "Q", self:GetTarget(PLAYER))
+    self:SendComm(player, "Q", self:GetTarget(PLAYER), UnitName("target"))
 end
 
 function Timed:SendThreat(guid)
-    self:SendComm(nil, "T", guid, assert(self:GetThreat(guid)))
+    self:SendComm(nil, "T", guid, assert(self:GetThreat(guid)),
+        ceil(Abs2RelTime(self:GetCooldown(PLAYER)) * 10))
 end
 
-function Timed:SendVersion(player)
-    self:SendComm(player, "V", self.version)
-end
-
---- Loads saved gauges on Timed initialization.
-function Timed:LoadGauges()
-    for unit in pairs(self.db.profile.gauges) do
-        self:CreateGauge(unit)
-    end
-
-    self:UnregisterEvent("VARIABLES_LOADED")
+function Timed:SendHello(player)
+    self:SendComm(player, "H", self.version, self:GetTarget(PLAYER),
+        ceil(Abs2RelTime(self:GetCooldown(PLAYER)) * 10))
 end
 
 function Timed:Reconfigure()
@@ -346,47 +361,59 @@ function Timed:DeleteGauge(gid)
     gauge:Release()
 end
 
+--- Loads saved gauges on Timed initialization.
+function Timed:LoadGauges()
+    for unit in pairs(self.db.profile.gauges) do
+        self:CreateGauge(unit)
+    end
+
+    self:UnregisterEvent("VARIABLES_LOADED")
+end
+
 --[[-- Comm --------------------------------------------------------------------
 
 Protocol:
-    T guid threat (group only)
-        Threat info packet.
+    T <guid> <threat> <cooldown>
+    Threat info packet (group only).
+        guid        Queried GUID.
+        threat      Threat information.
+        cooldown    Sender's query cooldown.
 
-    C time (group/whisper)
-        Command cooldown info. Sent with .debug threatlist query.
+    Q <guid> <name>
+    Queue info packet (group or whisper).
+        guid        New target GUID.
+        name        New target name.
 
-    Q guid (group/whisper)
-        Queue info packet.
-
-    V version (group/whisper)
-        Version info packet. Query if at group or reply if at whisper.
+    H <version> <guid> <cooldown>
+    Hello packet (group or whisper). Query if at group or reply if at whisper.
+        version     Sender's version.
+        guid        Sender target's GUID.
+        cooldown    Sender's query cooldown.
 
 --]]----------------------------------------------------------------------------
 
 function Timed:CHAT_MSG_ADDON(msg, distr, sender)
-    if not UnitInRaid(sender) and not UnitInParty(sender)
-    or distr == "UNKNOWN" then
+    if not IsInGroup(sender) or distr == "UNKNOWN" then
         return
     end
 
-    local type, param, data = strsplit(COMM_DELIM, msg, 3)
+    local type, A, B, C = strsplit(COMM_DELIM, msg, 4)
 
-    if type == "T" then                 -- threat info:
-        self:SetThreat(param, data)     -- guid, threat
+    if type == "T" then -- guid, threat, cooldown
+        self:SetThreat(A, B)
+        self:SetCooldown(sender, Rel2AbsTime((tonumber(C) or 0) / 10 - GetLag()))
 
-    elseif type == "C" then             -- cooldown info:
-        self:SetCooldown(sender, param) -- player, time
+    elseif type == "Q" then -- guid, name
+        self:SetTarget(sender, A)
+        self:Log("%s targeted %s.", sender, B or NONE)
 
-    elseif type == "Q" then             -- queue info:
-        self:SetTarget(sender, param)   -- player, guid
+    elseif type == "H" then -- version, guid, cooldown
+        self:SetVersion(sender, A)
+        self:SetTarget(sender, B)
+        self:SetCooldown(sender, Rel2AbsTime((tonumber(C) or 0) / 10 - GetLag()))
 
-    elseif type == "V" then             -- version info:
-        self:SetVersion(sender, param)  -- player, version
-
-        if distr ~= "WHISPER" then      -- @group
-            self:SendVersion(sender)
-            self:SendTarget(sender)
-            self:SendCooldown(sender)
+        if distr ~= "WHISPER" then
+            self:SendHello(sender)
         end
     end
 end
@@ -400,6 +427,7 @@ end
 -- Initialization --------------------------------------------------------------
 
 function Timed:OnInitialize()
+    self:SetCooldown(PLAYER, GetTime())
     self:SetVersion(PLAYER, self.version)
 
     -- initialize database
@@ -407,7 +435,7 @@ function Timed:OnInitialize()
         profile = {
             autodump    = true,
             gauges      = { target = true },
-            interval    = 10,
+            interval    = 10.0,
             log         = {},
             logging     = false,
             message     = ".debug threatlist",
