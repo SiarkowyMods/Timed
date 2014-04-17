@@ -44,8 +44,14 @@ local strsplit = strsplit
 local tconcat = table.concat
 local time = time
 
+TIMED_PULLAGGRO = 0
+TIMED_OVERAGGRO = 2
+TIMED_TANKING   = 1
+TIMED_INSECURE  = 3
+TIMED_SAFE      = 4
+
 -- Frequently used values
-local COMM_DELIM    = "\007"
+local COMM_DELIM    = "#"
 local THR_DELIM     = "~"
 local COMM_PREFIX   = "TT2"  -- Timed Threat v2
 local GUID_NONE     = UnitGUID("none")
@@ -77,6 +83,17 @@ local DEFAULT_CHAT_FRAME = DEFAULT_CHAT_FRAME
 -- Chat functions
 function Timed:Printf(...) self:Print(format(...)) end
 function Timed:Echo(...) DEFAULT_CHAT_FRAME:AddMessage(format(...)) end
+
+-- Number shortening function
+function Timed.shorten(num)
+    if num > 1000000 then
+        return format("%.3fm", num / 1000000)
+    elseif num > 1000 then
+        return format("%.1fk", num / 1000)
+    else
+        return format("%.1f", num)
+    end
+end
 
 -- Logging stuff
 function Timed:Log(...)
@@ -251,7 +268,7 @@ end
 
 function Timed:TIMED_THREAT_UPDATE(e, guid, info)
     for gid, gauge in pairs(gauges) do
-        gauge:Update(guid, info)
+        gauge:Update(guid, strsplit(THR_DELIM, info))
     end
 end
 
@@ -376,7 +393,8 @@ Protocol:
     T <guid> <threat> <cooldown>
     Threat info packet (group only).
         guid        Queried GUID.
-        threat      Threat information.
+        threat      Threat information in form of unit<->threat pairs
+                    with THR_DELIM as delimiter.
         cooldown    Sender's query cooldown.
 
     Q <guid> <name>

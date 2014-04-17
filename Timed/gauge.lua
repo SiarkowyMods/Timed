@@ -12,6 +12,7 @@ local pairs     = pairs
 local rawget    = rawget
 local UnitExists = UnitExists
 local UnitGUID  = UnitGUID
+local UnitInMeleeRange = Timed.UnitInMeleeRange
 local UnitName  = UnitName
 
 -- Threat gauge object stuff ---------------------------------------------------
@@ -54,18 +55,18 @@ end
 
 --- Handles updated threat data. Called internally by Update.
 -- This should be overwritten or hooked if desired.
-function Gauge:OnUpdate(guid, tankid, ...)
+function Gauge:OnUpdate(guid, ...)
     if not Timed.db.profile.autodump then return end
 
+    local unit, threat, ratio
+    local pullaggro = select(2, ...) * (not UnitInMeleeRange(self:UnitToken())
+        and 1.3 or 1.1)
+
     Timed:Printf("Threat info for %s", self:UnitName())
-
-    local unit, threat
-    local pullaggro
-    local inmelee
-
     for i = 1, select("#", ...), 2 do
         unit, threat = select(i, ...)
-        self:Print("%s %.2f (%d%%)", unit, threat, 0)
+        ratio = threat/pullaggro
+        self:Print("%s %s %.2f (%d%%)", strrep("||", ratio * 10), unit, threat, ratio * 100)
     end
 end
 
