@@ -1,0 +1,14 @@
+## Interface: 20400
+
+## Title: Timed [|cffeda55fClean|r]
+## Notes: Omen-like threat display for Timed by Siarkowy.
+## Author: Siarkowy <siarkowy@siarkowy.net>
+## X-Website: https://github.com/Siarkowy/Timed
+## X-Category: Combat
+## X-License: BSD-2.0
+## OptionalDeps: Ace3, SharedMedia
+## SavedVariables: TimedCleanDB
+## Version: 1.0a
+## Dependencies: Timed
+
+core.lua

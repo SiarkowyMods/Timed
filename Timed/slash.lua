@@ -80,6 +80,15 @@ Timed.slash = {
             set = "SetAutoDumpEnabled",
             order = 203
         },
+        watch = {
+            name = "Add gauge",
+            desc = "Add threat gauge for selected or specified unit.",
+            usage = "<unit>",
+            type = "input",
+            set = "AddGaugeHelper",
+            guiHidden = true,
+            order = 204
+        },
 
         -- Advanced
 
@@ -102,9 +111,7 @@ Timed.slash = {
             min = 3,
             max = 60,
             step = 0.1,
-            get = function(info)
-                return Timed.db.profile.interval
-            end,
+            get = "GetQueryInterval",
             set = "SetQueryInterval",
             order = 302
         },
@@ -148,11 +155,7 @@ Timed.slash = {
                     desc = "Add new gauge.",
                     usage = "<unit>",
                     type = "input",
-                    set = function(info, v)
-                        Timed:Printf(pcall(Timed.AddGauge, Timed, v ~= "" and v or "target", v == "")
-                            and "Gauge %q added successfully."
-                            or "No unit selected or specified gauge already exists.", v)
-                    end,
+                    set = "AddGaugeHelper",
                     order = 1
                 },
                 delete = {
@@ -189,6 +192,12 @@ function Timed:OnSlashCmd(input)
     end
 end
 
+function Timed:AddGaugeHelper(info, v)
+    self:Printf(pcall(self.AddGauge, self, v ~= "" and v or "target", v == "")
+        and "Gauge %q added successfully."
+        or "No unit selected or specified gauge already exists.", v)
+end
+
 function Timed:ListGauges()
     self:Print("List of active gauges:")
     for token in pairs(Timed.gauges) do
@@ -212,6 +221,7 @@ end
 
 -- Getters/Setters -------------------------------------------------------------
 
+function Timed:GetQueryInterval() return self.db.profile.interval end
 function Timed:SetQueryInterval(info, v) self.db.profile.interval = tonumber(v) or 10; self:Reconfigure() end
 
 function Timed:GetQueryMessage() return self.db.profile.message end

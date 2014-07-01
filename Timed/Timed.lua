@@ -138,7 +138,7 @@ end
 
 -- Localize functions
 local Abs2RelTime = Timed.Abs2RelTime
-local GetLag = GetLag
+local GetLag = Timed.GetLag
 local IsInGroup = Timed.IsInGroup
 local Rel2AbsTime = Timed.Rel2AbsTime
 local UnitInMeleeRange = Timed.UnitInMeleeRange
