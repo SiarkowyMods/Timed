@@ -98,9 +98,19 @@ function Timed.shorten(num)
 end
 
 -- Logging stuff
+local function GetLogTimestamp()
+    local stamp = time() + GetTime() % 1
+
+    while log[stamp] do
+        stamp = stamp + 0.01
+    end
+
+    return stamp
+end
+
 function Timed:Log(...)
-    if verbose then self:Print(ChatFrame3, format(...)) end
-    if logging and log then log[time() + GetTime() % 1] = format(...) end
+    if verbose then self:Print(ChatFrame1, format(...)) end
+    if logging and log then log[GetLogTimestamp()] = format(...) end
 end
 
 -- Group functions
@@ -304,6 +314,11 @@ function Timed:GetVersion(player)
     return versions[assert(player)]
 end
 
+function Timed:GetVersionNumber()
+    local a, b, c = self.version:match("(%d*)%D*(%d*)%D*(%d*)")
+    return (tonumber(a) or 0) * 10000 + (tonumber(b) or 0) * 100 + (tonumber(c) or 0)
+end
+
 function Timed:SetCooldown(player, time)
     cooldowns[assert(player)] = tonumber(time) or 0
 end
@@ -440,7 +455,7 @@ function Timed:CHAT_MSG_ADDON(msg, distr, sender)
         self:Log("%s targeted %s.", sender, B or NONE)
 
     elseif type == "H" then -- version, guid, cooldown
-        self:SetVersion(sender, A)
+        self:SetVersion(sender, tonumber(A))
         self:SetTarget(sender, B)
         self:SetCooldown(sender, Rel2AbsTime((tonumber(C) or 0) / 10 - GetLag()))
 
@@ -460,7 +475,7 @@ end
 
 function Timed:OnInitialize()
     self:SetCooldown(PLAYER, GetTime())
-    self:SetVersion(PLAYER, self.version)
+    self:SetVersion(PLAYER, self:GetVersionNumber())
 
     -- initialize database
     self.db = LibStub("AceDB-3.0"):New("Timed2DB", {

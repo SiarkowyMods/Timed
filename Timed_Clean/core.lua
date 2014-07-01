@@ -3,8 +3,15 @@
 -- Released under the terms of BSD 2.0 license.
 --------------------------------------------------------------------------------
 
+TIMED_CLEAN = "Timed Clean"
+
 TimedClean = LibStub("AceAddon-3.0"):NewAddon(
-    "Timed Clean",
+    {
+        author      = GetAddOnMetadata(TIMED_CLEAN:gsub(' ', '_'), "Author"),
+        version     = GetAddOnMetadata(TIMED_CLEAN:gsub(' ', '_'), "Version"),
+    },
+
+    TIMED_CLEAN,
 
     -- embeds
     "AceEvent-3.0",
@@ -142,6 +149,10 @@ function Clean:GetGaugeFrame(gauge)
     frame.gauge = gauge
 
     return frame
+end
+
+function Clean:GetVersionNumber()
+    return Timed.GetVersionNumber(self)
 end
 
 -- Gauge overrides -------------------------------------------------------------
