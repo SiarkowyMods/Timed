@@ -148,7 +148,11 @@ Timed.slash = {
                     desc = "Add new gauge.",
                     usage = "<unit>",
                     type = "input",
-                    func = todo,
+                    set = function(info, v)
+                        Timed:Printf(pcall(Timed.AddGauge, Timed, v ~= "" and v or "target", v == "")
+                            and "Gauge %q added successfully."
+                            or "No unit selected or specified gauge already exists.", v)
+                    end,
                     order = 1
                 },
                 delete = {
@@ -156,26 +160,39 @@ Timed.slash = {
                     desc = "Delete specified gauge.",
                     usage = "<unit>",
                     type = "input",
-                    func = todo,
+                    set = function(info, v)
+                        Timed:Printf(pcall(Timed.DeleteGauge, Timed, v)
+                            and "Gauge %q deleted successfully."
+                            or "Gauge %q does not exist.", v)
+                    end,
                     order = 2
                 },
                 list = {
                     name = "List",
                     desc = "List all gauges.",
                     type = "execute",
-                    func = todo,
+                    func = "ListGauges",
                     order = 3
-                },
+                }
             }
-        },
-    },
+        }
+    }
 }
+
+-- Slash handlers --------------------------------------------------------------
 
 function Timed:OnSlashCmd(input)
     if not input or input:lower() == "gui" then
         self:ShowOptionsFrame()
     else
         LibStub("AceConfigCmd-3.0").HandleCommand(Timed, "timed", "Timed", input)
+    end
+end
+
+function Timed:ListGauges()
+    self:Print("List of active gauges:")
+    for token in pairs(Timed.gauges) do
+        self:Echo("   %s", token)
     end
 end
 
@@ -192,6 +209,8 @@ function Timed:Toggle(info)
 
     info.option.name = self:IsEnabled() and "Disable" or "Enable"
 end
+
+-- Getters/Setters -------------------------------------------------------------
 
 function Timed:SetQueryInterval(info, v) self.db.profile.interval = tonumber(v) or 10; self:Reconfigure() end
 

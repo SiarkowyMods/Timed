@@ -23,7 +23,7 @@ Gauge.__meta = { __index = Gauge }
 
 --- Creates new gauge object and initializes it.
 -- @param unit (string) Unit ID for new gauge.
--- @param const (boolean) Wheter to calculate parameters only once.
+-- @param const (boolean) Whether to calculate parameters only once.
 -- @return table The gauge object.
 function Gauge:New(unit, const)
     assert(unit, "No unit specified to Gauge:New().")

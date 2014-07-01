@@ -9,13 +9,14 @@ TIMED = "Timed"
 
 Timed = LibStub("AceAddon-3.0"):NewAddon(
     {
-        author = GetAddOnMetadata(TIMED, "Author"),
-        cooldowns = { }, -- player query cooldowns
-        gauges = { },   -- array of threat gauges
-        targets = { },  -- target guids of group members
-        threat = { },   -- threat info array by guid
-        version = GetAddOnMetadata(TIMED, "Version"),
-        versions = { }, -- player versions
+        author      = GetAddOnMetadata(TIMED, "Author"),
+        version     = GetAddOnMetadata(TIMED, "Version"),
+
+        cooldowns   = { }, -- player query cooldowns
+        gauges      = { }, -- array of threat gauges
+        targets     = { }, -- target guids of group members
+        threat      = { }, -- threat info array by guid
+        versions    = { }, -- player versions
     },
 
     TIMED,
@@ -44,11 +45,12 @@ local strsplit = strsplit
 local tconcat = table.concat
 local time = time
 
-TIMED_PULLAGGRO = 0
-TIMED_OVERAGGRO = 2
-TIMED_TANKING   = 1
-TIMED_INSECURE  = 3
-TIMED_SAFE      = 4
+TIMED_PULLAGGRO     = 0
+TIMED_OVERAGGRO     = 2
+TIMED_TANKING       = 1
+TIMED_INSECURE      = 3
+TIMED_SAFE          = 4
+TIMED_PULLAGGRO_T   = "Pull aggro"
 
 -- Frequently used values
 local COMM_DELIM    = "#"
@@ -278,6 +280,18 @@ function Timed:GetCooldown(player)
     return cooldowns[assert(player)]
 end
 
+function Timed:GetQueueCount(guid)
+    count = 0
+
+    for player, target in pairs(targets) do
+        if target == guid then
+            count = count + 1
+        end
+    end
+
+    return count
+end
+
 function Timed:GetTarget(player)
     return targets[assert(player)]
 end
@@ -344,7 +358,7 @@ end
 
 --- Creates threat gauge that can be saved between sessions.
 -- @param unit (string) Unit ID for new gauge.
--- @param const (boolean) Flag stating wheter save gauge between sessions.
+-- @param const (boolean) Flag stating whether save gauge between sessions.
 function Timed:AddGauge(unit, const)
     local gauge = self:CreateGauge(unit, const)
     if not const then self.db.profile.gauges[gauge:UnitToken()] = true end
