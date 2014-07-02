@@ -7,13 +7,14 @@ local Timed = Timed
 
 -- Upvalues --------------------------------------------------------------------
 
-local assert    = assert
-local pairs     = pairs
-local rawget    = rawget
-local UnitExists = UnitExists
-local UnitGUID  = UnitGUID
+local assert        = assert
+local pairs         = pairs
+local rawget        = rawget
+local shorten       = Timed.shorten
+local UnitExists    = UnitExists
+local UnitGUID      = UnitGUID
 local UnitInMeleeRange = Timed.UnitInMeleeRange
-local UnitName  = UnitName
+local UnitName      = UnitName
 
 -- Threat gauge object stuff ---------------------------------------------------
 
@@ -43,13 +44,13 @@ end
 --- Initializes the object. Called internally by :Init().
 -- This should be overwritten or hooked if desired.
 function Gauge:OnInitialize()
-    self:Print("Gauge %s initialized.", self:UnitToken())
+    -- self:Print("Gauge %s initialized.", self:UnitToken())
 end
 
 --- Clears user data. Called internally by :Release().
 -- This should be overwritten or hooked if desired.
 function Gauge:OnRelease()
-    self:Print("Gauge %s released.", self:UnitToken())
+    -- self:Print("Gauge %s released.", self:UnitToken())
     for k, _ in pairs(self) do self[k] = nil end
 end
 
@@ -66,7 +67,7 @@ function Gauge:OnUpdate(guid, ...)
     for i = 1, select("#", ...), 2 do
         unit, threat = select(i, ...)
         ratio = threat/pullaggro
-        self:Print("%s %s %.2f (%d%%)", strrep("||", ratio * 10), unit, threat, ratio * 100)
+        self:Print("%s %s %s (%d%%)", strrep("||", ratio * 10), unit, shorten(threat), ratio * 100)
     end
 end
 

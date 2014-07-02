@@ -31,19 +31,19 @@ Timed = LibStub("AceAddon-3.0"):NewAddon(
 -- Variables -------------------------------------------------------------------
 
 -- Upvalues
-local Timed = Timed
-local ChatFrame3 = ChatFrame3
-local GetNetStats = GetNetStats
-local GetTime = GetTime
+local Timed         = Timed
+local ChatFrame3    = ChatFrame3
+local GetNetStats   = GetNetStats
+local GetTime       = GetTime
 local UnitAffectingCombat = UnitAffectingCombat
-local UnitGUID = UnitGUID
-local UnitName = UnitName
-local UnitInRaid = UnitInRaid
-local format = format
-local strjoin = strjoin
-local strsplit = strsplit
-local tconcat = table.concat
-local time = time
+local UnitGUID      = UnitGUID
+local UnitName      = UnitName
+local UnitInRaid    = UnitInRaid
+local format        = format
+local strjoin       = strjoin
+local strsplit      = strsplit
+local tconcat       = table.concat
+local time          = time
 
 TIMED_PULLAGGRO     = 0
 TIMED_OVERAGGRO     = 2
@@ -72,11 +72,11 @@ local
     _               -- dummy
 
 -- Core data storages
-local cooldowns = Timed.cooldowns
-local gauges = Timed.gauges
-local threat = Timed.threat
-local targets = Timed.targets
-local versions = Timed.versions
+local cooldowns     = Timed.cooldowns
+local gauges        = Timed.gauges
+local threat        = Timed.threat
+local targets       = Timed.targets
+local versions      = Timed.versions
 
 -- Utils -----------------------------------------------------------------------
 
@@ -88,6 +88,7 @@ function Timed:Echo(...) DEFAULT_CHAT_FRAME:AddMessage(format(...)) end
 
 -- Number shortening function
 function Timed.shorten(num)
+    num = tonumber(num) or 0
     if num > 1000000 then
         return format("%.3fm", num / 1000000)
     elseif num > 1000 then
@@ -109,8 +110,42 @@ local function GetLogTimestamp()
 end
 
 function Timed:Log(...)
-    if verbose then self:Print(ChatFrame1, format(...)) end
+    if verbose then self:Print(ChatFrame3, format(...)) end
     if logging and log then log[GetLogTimestamp()] = format(...) end
+end
+
+--- Returns an iterator to traverse hash indexed table in alphabetical order.
+-- @param t Table.
+-- @param f Sort function for table's keys.
+-- @return function - Hash table alphabetical iterator.
+local function PairsByKeys(t, f) -- from http://www.lua.org/pil/19.3.html
+    local a = {}
+    local i = 0
+
+    for n in pairs(t) do tinsert(a, n) end
+    sort(a, f)
+
+    return function()
+        i = i + 1
+        if a[i] == nil then return nil
+        else return a[i], t[a[i]] end
+    end
+end
+
+function Timed:DumpLog()
+    self:Print("Saved log data dump:")
+    local num = 0
+    for stamp, msg in PairsByKeys(self.db.profile.log) do
+        self:Echo("   %s: %s", date("%c", stamp), msg)
+        num = num + 1
+    end
+    self:Echo("Total of %d entries.", num)
+end
+
+function Timed:PurgeLog()
+    local log = self.db.profile.log
+    for k in pairs(log) do log[k] = nil end
+    self:Print("Log purged.")
 end
 
 -- Group functions
@@ -485,7 +520,7 @@ function Timed:OnInitialize()
             interval    = 10.0,
             log         = {},
             logging     = false,
-            message     = ".debug threatlist",
+            message     = ".deb thr",
             threshold   = 0.75,
             verbose     = false,
             warnings    = true,

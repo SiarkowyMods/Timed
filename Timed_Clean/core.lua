@@ -5,10 +5,14 @@
 
 TIMED_CLEAN = "Timed Clean"
 
+-- Addon object ----------------------------------------------------------------
+
 TimedClean = LibStub("AceAddon-3.0"):NewAddon(
     {
         author      = GetAddOnMetadata(TIMED_CLEAN:gsub(' ', '_'), "Author"),
         version     = GetAddOnMetadata(TIMED_CLEAN:gsub(' ', '_'), "Version"),
+
+        frames      = { }, -- gauge frame pool
     },
 
     TIMED_CLEAN,
@@ -18,13 +22,15 @@ TimedClean = LibStub("AceAddon-3.0"):NewAddon(
     "AceConsole-3.0"
 )
 
--- Upvalues --------------------------------------------------------------------
+-- Variables -------------------------------------------------------------------
 
-local Timed = Timed
-local Clean = TimedClean
-local Gauge = Timed.Gauge
+local Timed         = Timed
+local Clean         = TimedClean
+local Gauge         = Timed.Gauge
 local UnitInMeleeRange = Timed.UnitInMeleeRange
-local shorten = Timed.shorten
+local frames        = Clean.frames
+local gt            = GameTooltip
+local shorten       = Timed.shorten
 
 local TIMED_PULLAGGRO   = TIMED_PULLAGGRO
 local TIMED_OVERAGGRO   = TIMED_OVERAGGRO
@@ -33,8 +39,6 @@ local TIMED_INSECURE    = TIMED_INSECURE
 local TIMED_SAFE        = TIMED_SAFE
 local PLAYER            = UnitName("player")
 
-local frames = { }
-local gt = GameTooltip
 
 -- Core ------------------------------------------------------------------------
 
@@ -166,6 +170,9 @@ end
 
 --- Data update handler.
 function Gauge:OnUpdate(guid, ...)
+    local frame = self.frame
+
+    -- calculate time difference
     local time = GetTime()
     self.timeDiff = self.time and time - self.time or 0
     self.time = time
@@ -174,6 +181,12 @@ function Gauge:OnUpdate(guid, ...)
     local melee = UnitInMeleeRange(self:UnitToken())
     local factor = not melee and 1.3 or 1.1
     local pullaggro = select(2, ...)
+
+    -- check name
+    local name = self:UnitName() or TIMED
+    if frame.unit:GetText() ~= name then
+        frame.unit:SetText(name)
+    end
 
     if not pullaggro then
         return
@@ -185,6 +198,7 @@ function Gauge:OnUpdate(guid, ...)
     self.bars[0].threat:SetFormattedText(Clean.db.profile.thrformat:gsub("%%.?$?#",
         shorten(pullaggro)), pullaggro, factor*100)
 
+    -- refresh bars
     for i = 1, 4 do
         local bar = self.bars[i]
 
@@ -205,7 +219,8 @@ function Gauge:OnUpdate(guid, ...)
         end
     end
 
-    if gt:IsOwned(self.frame) then
+    -- handle tooltip
+    if gt:IsOwned(frame) then
         self:OnEnter()
     end
 end

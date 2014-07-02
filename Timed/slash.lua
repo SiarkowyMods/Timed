@@ -178,6 +178,33 @@ Timed.slash = {
                     order = 3
                 }
             }
+        },
+
+        -- Logging
+
+        log = {
+            name = "Log",
+            desc = "Logging utilities.",
+            type = "group",
+            order = 500,
+            guiInline = true,
+            guiHidden = true,
+            args = {
+                dump = {
+                    name = "Dump",
+                    desc = "Dump all log entries to chat frame.",
+                    type = "execute",
+                    func = "DumpLog",
+                    order = 1
+                },
+                purge = {
+                    name = "Purge",
+                    desc = "Deletes all log entries.",
+                    type = "execute",
+                    func = "PurgeLog",
+                    order = 2
+                }
+            }
         }
     }
 }
