@@ -4,8 +4,7 @@
 --------------------------------------------------------------------------------
 
 local Timed = Timed
-
-local function todo() ChatFrame1:AddMessage("TODO!") end
+local floor = floor
 
 Timed.slash = {
     name = "Timed",
@@ -41,7 +40,7 @@ Timed.slash = {
             name = "Version check",
             desc = "Perform group version check.",
             type = "execute",
-            func = todo,
+            func = "VersionCheck",
             order = 102
         },
 
@@ -102,7 +101,7 @@ Timed.slash = {
             name = "WARNING! These settings are for experienced users only. Change only if you know what you are doing. Wrong values may cause Timed to completely stop working.",
             type = "description",
             cmdHidden = true,
-            order = 301            
+            order = 301
         },
         interval = {
             name = "Interval",
@@ -227,6 +226,7 @@ end
 
 function Timed:ListGauges()
     self:Print("List of active gauges:")
+
     for token in pairs(Timed.gauges) do
         self:Echo("   %s", token)
     end
@@ -244,6 +244,33 @@ function Timed:Toggle(info)
     end
 
     info.option.name = self:IsEnabled() and "Disable" or "Enable"
+end
+
+function Timed.GetVersionString(v)
+    return tonumber(v)
+       and format("%d.%d.%d", floor(v / 10000) % 100, floor(v / 100) % 100, v % 100)
+        or nil
+end
+
+function Timed:VersionCheck()
+    self:Print("Version info:")
+
+    for player, version in pairs(self.versions) do
+        self:Echo("   %s: %s", player, self.GetVersionString(version) or UNKNOWN)
+    end
+
+    if IsInGroup() then
+        local maxid = UnitInRaid("player") and 40 or 4
+        local unit  = UnitInRaid("player") and "raid" or "party"
+
+        for i = 1, maxid do
+            local name = UnitName(unit .. i)
+
+            if name and not self:GetVersion(name) then
+                self:Echo("   %s: %s", name, NONE)
+            end
+        end
+    end
 end
 
 -- Getters/Setters -------------------------------------------------------------

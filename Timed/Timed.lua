@@ -296,13 +296,9 @@ function Timed:TIMED_TARGET_UPDATE(e, player, guid)
     self:Log("%s targeted %s.", player, guid)
 end
 
-function Timed:TIMED_THREAT_UPDATE(e, guid, info)
+function Timed:TIMED_THREAT_UPDATE(e, guid, ...)
     for gid, gauge in pairs(gauges) do
-        if info then
-            gauge:Update(guid, strsplit(COMM_DELIM, info))
-        else
-            gauge:Update(guid)
-        end
+        gauge:Update(guid, ...)
     end
 end
 
@@ -353,7 +349,7 @@ end
 function Timed:SetThreat(guid, info)
     info = info ~= "" and info or nil
     threat[assert(guid)] = info
-    self:SendMessage("TIMED_THREAT_UPDATE", guid, info)
+    self:SendMessage("TIMED_THREAT_UPDATE", guid, strsplit(COMM_DELIM, info or ""))
 
     return not not info
 end

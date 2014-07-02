@@ -137,14 +137,6 @@ function Clean:CreateGaugeFrame(gid, displayName)
     return fr
 end
 
---[[
-function Clean:RedrawGauges(full)
-    for gid, gauge in pairs(Timed.gauges) do
-        gauge:Redraw(full)
-    end
-end
---]]
-
 function Clean:GetGaugeFrame(gauge)
     local gid = gauge:UnitToken()
     local name = gauge:UnitName()
