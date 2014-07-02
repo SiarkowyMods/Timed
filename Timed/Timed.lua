@@ -53,8 +53,7 @@ TIMED_SAFE          = 4
 TIMED_PULLAGGRO_T   = "Pull aggro"
 
 -- Frequently used values
-local COMM_DELIM    = "#"
-local THR_DELIM     = "~"
+local COMM_DELIM    = "\007"
 local COMM_PREFIX   = "TT2"  -- Timed Threat v2
 local GUID_NONE     = UnitGUID("none")
 local PLAYER        = UnitName("player")
@@ -195,7 +194,6 @@ function Timed:OnEnable()
     self:SetTarget(PLAYER, GUID_NONE)
     self:Reconfigure()
 
-    self:RegisterEvent("CHAT_MSG_SYSTEM")
     self:RegisterEvent("PARTY_MEMBERS_CHANGED")
     self:RegisterEvent("PLAYER_TARGET_CHANGED")
     self:RegisterEvent("UNIT_FLAGS", "PLAYER_TARGET_CHANGED")
@@ -217,56 +215,41 @@ function Timed:OnDisable()
 end
 
 do
-    local data
-    local filter
-    local toggle
+    local data = {}
 
-    function Timed:CHAT_MSG_SYSTEM(e, msg)
+    function Timed:CHAT_MSG_SYSTEM(msg)
         if msg:sub(1, 11) == "Threat list" then
-            filter = true
-
             for k in pairs(data) do
                 data[k] = nil
             end
 
-            return
-        end
+            return true
 
-        if msg:sub(1, 13) == "End of threat" then
-            toggle = true
-
+        elseif msg:sub(1, 13) == "End of threat" then
             local guid = UnitGUID("target")
             local thr = tconcat(data, COMM_DELIM)
 
             self:SetCooldown(PLAYER, Rel2AbsTime(interval - 3 * GetLag()))
-            self:SetThreat(guid, thr)
 
-            if IsInGroup() then
+            if self:SetThreat(guid, thr) and IsInGroup() then
                 self:SendThreat(guid)
             end
 
-            return
+            return true
         end
 
         local pos, unit, threat =
             msg:match("(%d+)\.%s+(.-)%s+[(]guid .+[)]%s+\-%s+threat%s+(.+)%s*")
 
         if unit and threat then
-            data[tonumber(pos)] = format("%s%s%.2f", unit, THR_DELIM,
+            data[tonumber(pos)] = format("%s%s%.2f", unit, COMM_DELIM,
                 tonumber(threat) or 0)
+
+            return true
         end
+
+        return false, msg
     end
-
-    ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(msg)
-        if toggle then
-            filter = nil
-            toggle = nil
-
-            return true, msg
-        end
-
-        return filter, msg
-    end)
 end
 
 do
@@ -315,7 +298,11 @@ end
 
 function Timed:TIMED_THREAT_UPDATE(e, guid, info)
     for gid, gauge in pairs(gauges) do
-        gauge:Update(guid, strsplit(THR_DELIM, info))
+        if info then
+            gauge:Update(guid, strsplit(COMM_DELIM, info))
+        else
+            gauge:Update(guid)
+        end
     end
 end
 
@@ -364,8 +351,11 @@ function Timed:SetTarget(player, guid)
 end
 
 function Timed:SetThreat(guid, info)
+    info = info ~= "" and info or nil
     threat[assert(guid)] = info
     self:SendMessage("TIMED_THREAT_UPDATE", guid, info)
+
+    return not not info
 end
 
 function Timed:SetVersion(player, version)
@@ -373,22 +363,18 @@ function Timed:SetVersion(player, version)
     self:SendMessage("TIMED_VERSION_UPDATE", player, version)
 end
 
-function Timed:SendCooldown(player)
-    self:SendComm(player, "C", self:GetCooldown(PLAYER))
-end
-
 function Timed:SendTarget(player)
-    self:SendComm(player, "Q", self:GetTarget(PLAYER), UnitName("target"))
+    self:SendComm(player, "Q", self:GetTarget(PLAYER), UnitName("target") or NONE)
 end
 
 function Timed:SendThreat(guid)
-    self:SendComm(nil, "T", guid, assert(self:GetThreat(guid)),
-        ceil(Abs2RelTime(self:GetCooldown(PLAYER)) * 10))
+    self:SendComm(nil, "T", guid, ceil(Abs2RelTime(self:GetCooldown(PLAYER)) * 10),
+        assert(self:GetThreat(guid)))
 end
 
 function Timed:SendHello(player)
-    self:SendComm(player, "H", self.version, self:GetTarget(PLAYER),
-        ceil(Abs2RelTime(self:GetCooldown(PLAYER)) * 10))
+    self:SendComm(player, "H", self:GetTarget(PLAYER), ceil(Abs2RelTime(
+        self:GetCooldown(PLAYER)) * 10), self:GetVersionNumber())
 end
 
 function Timed:Reconfigure()
@@ -454,23 +440,22 @@ end
 --[[-- Comm --------------------------------------------------------------------
 
 Protocol:
-    T <guid> <threat> <cooldown>
+    T <guid> <cooldown> <threat>
     Threat info packet (group only).
         guid        Queried GUID.
-        threat      Threat information in form of unit<->threat pairs
-                    with THR_DELIM as delimiter.
         cooldown    Sender's query cooldown.
+        threat      Threat information in form of unit<->threat pairs.
 
     Q <guid> <name>
     Queue info packet (group or whisper).
         guid        New target GUID.
         name        New target name.
 
-    H <version> <guid> <cooldown>
+    H <guid> <cooldown> <version>
     Hello packet (group or whisper). Query if at group or reply if at whisper.
-        version     Sender's version.
         guid        Sender target's GUID.
         cooldown    Sender's query cooldown.
+        version     Sender's version.
 
 --]]----------------------------------------------------------------------------
 
@@ -481,18 +466,18 @@ function Timed:CHAT_MSG_ADDON(msg, distr, sender)
 
     local type, A, B, C = strsplit(COMM_DELIM, msg, 4)
 
-    if type == "T" then -- guid, threat, cooldown
-        self:SetThreat(A, B)
-        self:SetCooldown(sender, Rel2AbsTime((tonumber(C) or 0) / 10 - GetLag()))
+    if type == "T" then -- guid, cooldown, threat
+        self:SetThreat(A, C)
+        self:SetCooldown(sender, Rel2AbsTime((tonumber(B) or 0) / 10 - GetLag()))
 
     elseif type == "Q" then -- guid, name
         self:SetTarget(sender, A)
         self:Log("%s targeted %s.", sender, B or NONE)
 
-    elseif type == "H" then -- version, guid, cooldown
-        self:SetVersion(sender, tonumber(A))
-        self:SetTarget(sender, B)
-        self:SetCooldown(sender, Rel2AbsTime((tonumber(C) or 0) / 10 - GetLag()))
+    elseif type == "H" then -- guid, cooldown, version
+        self:SetTarget(sender, A)
+        self:SetCooldown(sender, Rel2AbsTime((tonumber(B) or 0) / 10 - GetLag()))
+        self:SetVersion(sender, tonumber(C))
 
         if distr ~= "WHISPER" then
             self:SendHello(sender)
@@ -526,6 +511,11 @@ function Timed:OnInitialize()
             warnings    = true,
         }
     }, DEFAULT)
+
+    -- add system message filter
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(msg)
+        return self:CHAT_MSG_SYSTEM(msg)
+    end)
 
     -- slash command
     LibStub("AceConfig-3.0"):RegisterOptionsTable("Timed", self.slash)

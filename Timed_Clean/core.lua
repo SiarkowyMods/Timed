@@ -180,7 +180,7 @@ function Gauge:OnUpdate(guid, ...)
     local unit, threat, ratio
     local melee = UnitInMeleeRange(self:UnitToken())
     local factor = not melee and 1.3 or 1.1
-    local pullaggro = select(2, ...)
+    local pullaggro = tonumber(select(2, ...) or nil)
 
     -- check name
     local name = self:UnitName() or TIMED
