@@ -4,7 +4,6 @@
 --------------------------------------------------------------------------------
 
 local Timed = Timed
-local floor = floor
 
 Timed.slash = {
     name = "Timed",
@@ -210,6 +209,8 @@ Timed.slash = {
 
 -- Slash handlers --------------------------------------------------------------
 
+--- Timed slash command handler.
+-- @param input (string|nil) Slash command.
 function Timed:OnSlashCmd(input)
     if not input or input:lower() == "gui" then
         self:ShowOptionsFrame()
@@ -224,6 +225,7 @@ function Timed:AddGaugeHelper(info, v)
         or "No unit selected or specified gauge already exists.", v)
 end
 
+--- Lists active gauges to chat frame.
 function Timed:ListGauges()
     self:Print("List of active gauges:")
 
@@ -232,10 +234,12 @@ function Timed:ListGauges()
     end
 end
 
+--- Displays options frame.
 function Timed:ShowOptionsFrame()
     InterfaceOptionsFrame_OpenToFrame(self.options)
 end
 
+--- Toggles add-on on/off.
 function Timed:Toggle(info)
     if self:IsEnabled() then
         self:Disable()
@@ -246,12 +250,16 @@ function Timed:Toggle(info)
     info.option.name = self:IsEnabled() and "Disable" or "Enable"
 end
 
+--- Returns string representation of numeric version.
+-- @param v (number) Numeric version.
+-- @return string - String version.
 function Timed.GetVersionString(v)
     return tonumber(v)
        and format("%d.%d.%d", floor(v / 10000) % 100, floor(v / 100) % 100, v % 100)
         or nil
 end
 
+--- Displays version check info to chat frame.
 function Timed:VersionCheck()
     self:Print("Version info:")
 
@@ -260,7 +268,7 @@ function Timed:VersionCheck()
     end
 
     if IsInGroup() then
-        local maxid = UnitInRaid("player") and 40 or 4
+        local maxid = UnitInRaid("player") and GetNumRaidMembers() or 4
         local unit  = UnitInRaid("player") and "raid" or "party"
 
         for i = 1, maxid do
@@ -273,13 +281,13 @@ function Timed:VersionCheck()
     end
 end
 
--- Getters/Setters -------------------------------------------------------------
+-- Getters/setters -------------------------------------------------------------
 
 function Timed:GetQueryInterval() return self.db.profile.interval end
 function Timed:SetQueryInterval(info, v) self.db.profile.interval = tonumber(v) or 10; self:Reconfigure() end
 
 function Timed:GetQueryMessage() return self.db.profile.message end
-function Timed:SetQueryMessage(info, v) self.db.profile.message = v ~= "" and v or ".debug threatlist"; self:Reconfigure() end
+function Timed:SetQueryMessage(info, v) self.db.profile.message = v ~= "" and v or ".deb thr"; self:Reconfigure() end
 
 function Timed:GetWarningsEnabled() return self.db.profile.warnings end
 function Timed:SetWarningsEnabled(info, v) self.db.profile.warnings = v; self:Reconfigure() end

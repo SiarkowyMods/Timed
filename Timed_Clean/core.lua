@@ -5,7 +5,7 @@
 
 TIMED_CLEAN = "Timed Clean"
 
--- Addon object ----------------------------------------------------------------
+-- Add-on object ---------------------------------------------------------------
 
 TimedClean = LibStub("AceAddon-3.0"):NewAddon(
     {
@@ -17,7 +17,7 @@ TimedClean = LibStub("AceAddon-3.0"):NewAddon(
 
     TIMED_CLEAN,
 
-    -- embeds
+    -- embeds:
     "AceEvent-3.0",
     "AceConsole-3.0"
 )
@@ -42,6 +42,9 @@ local PLAYER            = UnitName("player")
 
 -- Core ------------------------------------------------------------------------
 
+--- Returns threat situation identifier.
+-- @param ratio (number) Threat vs. pull aggro ratio.
+-- @return number - Numeric identifier.
 local function GetSituation(ratio)
     if ratio > 1.0 then
         return TIMED_OVERAGGRO
@@ -54,6 +57,10 @@ local function GetSituation(ratio)
     end
 end
 
+--- Creates graphical gauge frame.
+-- @param gid (string) Gauge identifier.
+-- @param displayName (string) Fixed unit frame.
+-- @return frame - Gauge display frame.
 function Clean:CreateGaugeFrame(gid, displayName)
     local height = self.db.profile.barheight
     local margin = self.db.profile.barmargin
@@ -137,16 +144,19 @@ function Clean:CreateGaugeFrame(gid, displayName)
     return fr
 end
 
+--- Creates or returns cached frame for given gauge.
+-- @param gauge (table) Gauge object for configuration.
+-- @return frame - Gauge display frame.
 function Clean:GetGaugeFrame(gauge)
     local gid = gauge:UnitToken()
     local name = gauge:UnitName()
 
     local frame = frames[gid:gsub("^.", string.upper)] or self:CreateGaugeFrame(gid, name)
     frame.gauge = gauge
-
     return frame
 end
 
+--- Returns numeric version of the add-on.
 function Clean:GetVersionNumber()
     return Timed.GetVersionNumber(self)
 end
@@ -161,6 +171,8 @@ function Gauge:OnInitialize()
 end
 
 --- Data update handler.
+-- @param guid (string) Unit GUID.
+-- @param ... (tuple) Threat info tuple of pairs.
 function Gauge:OnUpdate(guid, ...)
     local frame = self.frame
 
@@ -211,7 +223,7 @@ function Gauge:OnUpdate(guid, ...)
         end
     end
 
-    -- handle tooltip
+    -- handle tool-tip
     if gt:IsOwned(frame) then
         self:OnEnter()
     end
@@ -236,7 +248,7 @@ function Gauge:OnLeave()
     gt:Hide()
 end
 
---- Gauge release handler.
+--- Release handler.
 function Gauge:OnRelease()
     -- dispose gauge frame
     local frame = self.frame
@@ -247,6 +259,8 @@ function Gauge:OnRelease()
     for k, _ in pairs(self) do self[k] = nil end
 end
 
+--- Returns nominal queue interval for currect gauge.
+-- @return number - Nominal interval.
 function Gauge:GetNominalInterval()
     local count = Timed:GetQueueCount(self:UnitGUID())
     return count > 0 and Timed:GetQueryInterval() / count or 0
@@ -254,37 +268,36 @@ end
 
 -- Initialization --------------------------------------------------------------
 
-local defaults = {
-    profile = {
-        backdrop = {
-            bgFile = [[Interface\Tooltips\UI-Tooltip-Background]],
-            edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]],
-            tile = true, tileSize = 16, edgeSize = 16,
-            insets = { left = 4, right = 4, top = 4, bottom = 4 }
-        },
-        barheight = 16,
-        barmargin = 1,
-        barstyle = "Interface\\Addons\\SharedMedia\\statusbar\\Minimalist",
-        colors = {
-            -- bars
-            [TIMED_PULLAGGRO]   = { r = 1, g = 0, b = .2, a = 1 },      -- pull aggro
-            [TIMED_TANKING]     = { r = 1, g = .5, b = .2, a = 1 },     -- tanking
-            [TIMED_OVERAGGRO]   = { r = 1, g = .2, b = .2, a = 1 },     -- overaggro
-            [TIMED_INSECURE]    = { r = 1, g = 1, b = .2, a = 3/4 },    -- insecure
-            [TIMED_SAFE]        = { r = .2, g = 1, b = .2, a = 1/4 },   -- safe
-
-            -- labels
-            threat  = { r = 1, g = 1, b = 1 },
-            unit    = { r = 1, g = 1, b = 1 },
-        },
-        fscale = 1, -- frame scale
-        fwidth = 200, -- frame width
-        thrformat = "%#", -- threat number format, %# stands for shortened float
-        queformat = "%2$.1f s", -- queue info format
-    }
-}
-
+--- Timed Clean initialize handler.
 function Clean:OnInitialize()
     -- initialize database
-    self.db = LibStub("AceDB-3.0"):New("TimedCleanDB", defaults, "Default")
+    self.db = LibStub("AceDB-3.0"):New("TimedCleanDB", {
+        profile = {
+            backdrop = {
+                bgFile = [[Interface\Tooltips\UI-Tooltip-Background]],
+                edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]],
+                tile = true, tileSize = 16, edgeSize = 16,
+                insets = { left = 4, right = 4, top = 4, bottom = 4 }
+            },
+            barheight = 16,
+            barmargin = 1,
+            barstyle = "Interface\\Addons\\SharedMedia\\statusbar\\Minimalist",
+            colors = {
+                -- bars
+                [TIMED_PULLAGGRO]   = { r = 1,  g = 0,  b = .2, a = 1 },
+                [TIMED_TANKING]     = { r = 1,  g = .5, b = .2, a = 1 },
+                [TIMED_OVERAGGRO]   = { r = 1,  g = .2, b = .2, a = 1 },
+                [TIMED_INSECURE]    = { r = 1,  g = 1,  b = .2, a = 3/4 },
+                [TIMED_SAFE]        = { r = .2, g = 1,  b = .2, a = 1/4 },
+
+                -- labels
+                threat  = { r = 1, g = 1, b = 1 },
+                unit    = { r = 1, g = 1, b = 1 },
+            },
+            fscale = 1, -- frame scale
+            fwidth = 200, -- frame width
+            thrformat = "%#", -- threat number format, %# stands for shortened float
+            queformat = "%2$.1f s", -- queue info format
+        }
+    }, DEFAULT)
 end
