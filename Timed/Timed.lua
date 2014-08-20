@@ -35,7 +35,8 @@ local Timed         = Timed
 local ChatFrame3    = ChatFrame3
 local GetNetStats   = GetNetStats
 local GetTime       = GetTime
-local UnitAffectingCombat = UnitAffectingCombat
+local SendChatMessage = SendChatMessage
+local UnitInCombat  = UnitAffectingCombat
 local UnitGUID      = UnitGUID
 local UnitName      = UnitName
 local UnitInRaid    = UnitInRaid
@@ -63,6 +64,7 @@ local
     autodump,       -- threat info dump to chat frame flag
     interval,       -- min. interval between threat queries per player
     message,        -- query message to be sent
+    channel,        -- query message channel    
     threshold,      -- threshold for overaggro warnings
     log,            -- log table reference
     logging,        -- event logging flag
@@ -180,9 +182,8 @@ end
 -- @return boolean - True if valid for querying.
 function Timed.UnitIsQueryable(unit)
     return UnitExists(unit)
-        and UnitAffectingCombat(unit)
-        and not UnitIsPlayer(unit)
-        and not UnitIsFriend(unit, "player")
+       and not UnitIsPlayer(unit)
+       and not UnitIsFriend(unit, "player")
 end
 
 -- Time functions
@@ -204,8 +205,7 @@ end
 -- @param time (number) Absolute time.
 -- @return number - Relative time.
 function Timed.Abs2RelTime(time)
-    local t = time - GetTime()
-    return t > 0 and t or 0
+    return time - GetTime()
 end
 
 -- Localize functions
@@ -225,7 +225,7 @@ function Timed:OnEnable()
 
     self:RegisterEvent("PARTY_MEMBERS_CHANGED")
     self:RegisterEvent("PLAYER_TARGET_CHANGED")
-    self:RegisterEvent("UNIT_FLAGS", "PLAYER_TARGET_CHANGED")
+    self:RegisterEvent("UNIT_FLAGS")
 
     self:RegisterMessage("TIMED_COOLDOWN_UPDATE", self.Print)
     self:RegisterMessage("TIMED_TARGET_UPDATE")
@@ -262,11 +262,16 @@ do
         elseif msg:sub(1, 13) == "End of threat" then
             local guid = UnitGUID("target")
             local thr = tconcat(data, COMM_DELIM)
+            self:Log("Threat info: %s -> sent", thr:gsub(COMM_DELIM, "/"), PLAYER)
 
             self:SetCooldown(PLAYER, Rel2AbsTime(interval - 3 * GetLag()))
 
             if self:SetThreat(guid, thr) and IsInGroup() then
                 self:SendThreat(guid)
+            end
+
+            if UnitInCombat("target") and UnitIsQueryable("target") then
+                self:RecalculateQueryTimer()
             end
 
             return true
@@ -310,24 +315,26 @@ end
 
 --- Player target change handler.
 -- @param e (string) Event name.
--- @param unit (string|nil) Unit ID if handling UNIT_FLAGS.
-function Timed:PLAYER_TARGET_CHANGED(e, unit)
-    unit = unit or "target"
-
-    if unit ~= "target" then -- can be different because of UNIT_FLAGS
-        return
-    end
-
+function Timed:PLAYER_TARGET_CHANGED(e)
+    local unit = "target"
     local guid = UnitIsQueryable(unit) and UnitGUID(unit) or GUID_NONE
 
-    if self:GetTarget(PLAYER) == guid then -- no target change
-        return
+    if self:GetTarget(PLAYER) ~= guid then
+        self:SetTarget(PLAYER, guid, UnitName(unit) or NONE)
+        if IsInGroup() then self:SendTarget() end
     end
 
-    self:SetTarget(PLAYER, guid, UnitName(unit) or NONE)
+    self:UNIT_FLAGS(e, unit)
+end
 
-    if IsInGroup() then
-        self:SendTarget()
+--- Unit flags update handler.
+-- @param e (string) Event name.
+-- @param unit (string) Unit ID.
+function Timed:UNIT_FLAGS(e, unit)
+    if unit ~= "target" then return end
+
+    if UnitInCombat(unit) and UnitIsQueryable(unit) then
+        self:RecalculateQueryTimer()
     end
 end
 
@@ -340,7 +347,7 @@ end
 -- @param name (string) Target name.
 function Timed:TIMED_TARGET_UPDATE(e, player, guid, name)
     if name then
-        self:Log("%s targeted %s.", player, name)
+        self:Log("%s targeted %s (%d |4player:players; targeting).", player, name, self:GetQueueCount(guid))
     end
 end
 
@@ -376,6 +383,22 @@ function Timed:GetQueueCount(guid)
     end
 
     return count
+end
+
+--- Returns specified player's queue position.
+-- @param player (string) Player name.
+function Timed:GetQueuePosition(player)
+    local _cooldown = self:GetCooldown(player)
+    local _target = self:GetTarget(player)
+    local pos = 1
+
+    for player, cooldown in pairs(cooldowns) do
+        if self:GetTarget(player) == _target and cooldown < _cooldown then
+            pos = pos + 1
+        end
+    end
+
+    return pos
 end
 
 --- Returns target GUID of specified player.
@@ -461,6 +484,21 @@ function Timed:SendHello(player)
         self:GetCooldown(PLAYER)) * 10), self:GetVersionNumber())
 end
 
+--- Queries threat list.
+function Timed:QueryThreat()
+    if UnitInCombat("target") and UnitIsQueryable("target") then
+        SendChatMessage(message, channel)
+    end
+end
+
+function Timed:RecalculateQueryTimer()
+    local num = self:GetQueueCount(self:GetTarget(PLAYER))
+    local pos = self:GetQueuePosition(PLAYER)
+
+    self:CancelAllTimers()
+    self:ScheduleTimer("QueryThreat", interval/num * pos)
+end
+
 --- Reconfigures variables for speed-up.
 function Timed:Reconfigure()
     local db = self.db.profile
@@ -470,6 +508,7 @@ function Timed:Reconfigure()
     log         = db.log
     logging     = db.logging
     message     = db.message
+    channel     = db.channel
     threshold   = db.threshold
     verbose     = db.verbose
     warnings    = db.warnings
@@ -547,19 +586,27 @@ Timed protocol
 --]]----------------------------------------------------------------------------
 
 --- Add-on message handler.
+-- @param e (string) Event name.
 -- @param msg (string) Message.
 -- @param distr (string) Distribution.
 -- @param sender (string) Sender.
-function Timed:CHAT_MSG_ADDON(msg, distr, sender)
-    if not IsInGroup(sender) or distr == "UNKNOWN" then
+function Timed:CHAT_MSG_ADDON(e, msg, distr, sender)
+    if sender == PLAYER or not IsInGroup(sender) or distr == "UNKNOWN" then
         return
     end
 
     local type, A, B, C = strsplit(COMM_DELIM, msg, 4)
 
     if type == "T" then -- guid, cooldown, threat
-        self:SetThreat(A, C)
         self:SetCooldown(sender, Rel2AbsTime((tonumber(B) or 0) / 10 - GetLag()))
+        self:SetThreat(A, C)
+        self:Log("Threat info: %s <- received from %s", C:gsub(COMM_DELIM, "/"), sender)
+
+        if A == self:GetTarget(PLAYER)
+        and UnitInCombat("target")
+        and UnitIsQueryable("target") then
+            self:RecalculateQueryTimer()
+        end
 
     elseif type == "Q" then -- guid, name
         self:SetTarget(sender, A, B or UNKNOWN)
@@ -600,6 +647,7 @@ function Timed:OnInitialize()
             log         = {},
             logging     = false,
             message     = ".deb thr",
+            channel     = "GUILD",
             threshold   = 0.75,
             verbose     = false,
             warnings    = true,
