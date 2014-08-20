@@ -24,13 +24,13 @@ TimedClean = LibStub("AceAddon-3.0"):NewAddon(
 
 -- Variables -------------------------------------------------------------------
 
-local Timed         = Timed
-local Clean         = TimedClean
-local Gauge         = Timed.Gauge
+local Timed     = Timed
+local Clean     = TimedClean
+local Gauge     = Timed.Gauge
+local frames    = Clean.frames
+local gt        = GameTooltip
+local shorten   = Timed.shorten
 local UnitInMeleeRange = Timed.UnitInMeleeRange
-local frames        = Clean.frames
-local gt            = GameTooltip
-local shorten       = Timed.shorten
 
 local TIMED_PULLAGGRO   = TIMED_PULLAGGRO
 local TIMED_OVERAGGRO   = TIMED_OVERAGGRO
@@ -38,7 +38,6 @@ local TIMED_TANKING     = TIMED_TANKING
 local TIMED_INSECURE    = TIMED_INSECURE
 local TIMED_SAFE        = TIMED_SAFE
 local PLAYER            = UnitName("player")
-
 
 -- Core ------------------------------------------------------------------------
 

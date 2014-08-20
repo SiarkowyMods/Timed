@@ -11,4 +11,4 @@
 ## Version: 1.0a
 ## Dependencies: Timed
 
-core.lua
+Clean.lua
