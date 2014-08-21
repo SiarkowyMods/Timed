@@ -27,10 +27,11 @@ TimedClean = LibStub("AceAddon-3.0"):NewAddon(
 local Timed     = Timed
 local Clean     = TimedClean
 local Gauge     = Timed.Gauge
+local Media     = LibStub("LibSharedMedia-3.0")
+local UnitInMeleeRange = Timed.UnitInMeleeRange
 local frames    = Clean.frames
 local gt        = GameTooltip
 local shorten   = Timed.shorten
-local UnitInMeleeRange = Timed.UnitInMeleeRange
 
 local TIMED_PULLAGGRO   = TIMED_PULLAGGRO
 local TIMED_OVERAGGRO   = TIMED_OVERAGGRO
@@ -82,8 +83,10 @@ function Clean:CreateGaugeFrame(gid, displayName)
     fr:SetHeight(26 + 2 * self.db.profile.backdrop.insets.top + 5 * height + 4 * margin)
 
     fr:SetBackdrop(self.db.profile.backdrop)
-    fr:SetBackdropColor(0, 0, 0, 0.5)
-    fr:SetBackdropBorderColor(.5, .5, .5, 1)
+    local col = self.db.profile.bgcolor
+    fr:SetBackdropColor(col.r, col.g, col.b, col.a)
+    local col = self.db.profile.bordercolor
+    fr:SetBackdropBorderColor(col.r, col.g, col.b, col.a)
 
     -- queue info
     local num = fr:CreateFontString(fr:GetName() .. "Num")
@@ -111,8 +114,9 @@ function Clean:CreateGaugeFrame(gid, displayName)
         bar:SetMinMaxValues(0, 1)
         bar:SetPoint("TOPLEFT", unit, "BOTTOMLEFT", 0, -pad)
         bar:SetPoint("BOTTOMRIGHT", num, "BOTTOMRIGHT", 0, -pad -height)
-        bar:SetStatusBarTexture(self.db.profile.barstyle)
-        bar:SetStatusBarColor(1, 0, 0)
+        bar:SetStatusBarTexture(Media:Fetch("statusbar", self.db.profile.barstyle or "Blizzard"))
+        local col = Clean.db.profile.colors[TIMED_PULLAGGRO]
+        bar:SetStatusBarColor(col.r, col.g, col.b, col.a)
         bar:SetValue(1 - id)
         pad = pad + height + margin
 
@@ -128,7 +132,7 @@ function Clean:CreateGaugeFrame(gid, displayName)
         -- unit name
         local unit = bar:CreateFontString(bar:GetName() .. "Name", "ARTWORK")
         unit:SetFontObject(GameFontNormal)
-        unit:SetText(id == 0 and TIMED_PULLAGGRO_T or "")
+        unit:SetText(id == 0 and TIMED_PULLAGGRO_TEXT or "")
         local col = self.db.profile.colors.unit
         unit:SetTextColor(col.r, col.g, col.b)
         unit:SetPoint("LEFT", bar, "LEFT", 1, 1)
@@ -158,6 +162,30 @@ end
 --- Returns numeric version of the add-on.
 function Clean:GetVersionNumber()
     return Timed.GetVersionNumber(self)
+end
+
+--- Updates gauges when display settings change.
+function Clean:Redraw()
+    local db = self.db.profile
+
+    local bgcol = db.bgcolor
+    local bocol = db.bordercolor
+    local pacol = db.colors[TIMED_PULLAGGRO]
+    local style = Media:Fetch("statusbar", db.barstyle or "Blizzard")
+
+    for gid, fr in pairs(frames) do
+        fr:SetBackdrop(self.db.profile.backdrop)
+        fr:SetBackdropColor(bgcol.r, bgcol.g, bgcol.b, bgcol.a)
+        fr:SetBackdropBorderColor(bocol.r, bocol.g, bocol.b, bocol.a)
+        fr:SetScale(db.fscale)
+        fr:SetWidth(db.fwidth)
+
+        fr.bars[0]:SetStatusBarColor(pacol.r, pacol.g, pacol.b, pacol.a)
+
+        for id, bar in pairs(fr.bars) do
+            bar:SetStatusBarTexture(style)
+        end
+    end
 end
 
 -- Gauge overrides -------------------------------------------------------------
@@ -268,30 +296,35 @@ function Clean:OnInitialize()
     self.db = LibStub("AceDB-3.0"):New("TimedCleanDB", {
         profile = {
             backdrop = {
-                bgFile = [[Interface\Tooltips\UI-Tooltip-Background]],
-                edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]],
-                tile = true, tileSize = 16, edgeSize = 16,
-                insets = { left = 4, right = 4, top = 4, bottom = 4 }
+                bgFile      = [[Interface\Tooltips\UI-Tooltip-Background]],
+                edgeFile    = [[Interface\Tooltips\UI-Tooltip-Border]],
+                tile        = true,
+                tileSize    = 16,
+                edgeSize    = 16,
+                insets      = { left = 4, right = 4, top = 4, bottom = 4 }
             },
-            barheight = 16,
-            barmargin = 1,
-            barstyle = "Interface\\Addons\\SharedMedia\\statusbar\\Minimalist",
+            barheight   = 16,
+            barmargin   = 1,
+            barstyle    = "Minimalist",
+            bgcolor     = { r = 0, g = 0, b = 0, a = 0.8 },
+            bordercolor = { r = 1, g = 0, b = 0, a = 1 },
+            borderstyle = "Blizzard Tooltip",
             colors = {
                 -- bars
-                [TIMED_PULLAGGRO]   = { r = 1,  g = 0,  b = .2, a = 1 },
-                [TIMED_TANKING]     = { r = 1,  g = .5, b = .2, a = 1 },
-                [TIMED_OVERAGGRO]   = { r = 1,  g = .2, b = .2, a = 1 },
-                [TIMED_INSECURE]    = { r = 1,  g = 1,  b = .2, a = 3/4 },
-                [TIMED_SAFE]        = { r = .2, g = 1,  b = .2, a = 1/4 },
+                [TIMED_PULLAGGRO]   = { r = 1, g = 0,   b = 0, a = 1 }, -- red
+                [TIMED_TANKING]     = { r = 1, g = 0,   b = 0, a = 1 }, -- red
+                [TIMED_OVERAGGRO]   = { r = 1, g = 1/3, b = 0, a = 1 }, -- orange
+                [TIMED_INSECURE]    = { r = 1, g = 2/3, b = 0, a = 1 }, -- yellow
+                [TIMED_SAFE]        = { r = 0, g = 1,   b = 0, a = 1/3 },  -- green
 
                 -- labels
                 threat  = { r = 1, g = 1, b = 1 },
                 unit    = { r = 1, g = 1, b = 1 },
             },
-            fscale = 1, -- frame scale
-            fwidth = 200, -- frame width
-            thrformat = "%#", -- threat number format, %# stands for shortened float
-            queformat = "%2$.1f s", -- queue info format, formatted with queue size and interval
+            fscale      = 1, -- frame scale
+            fwidth      = 225, -- frame width
+            thrformat   = "%#", -- threat number format, %# stands for shortened float
+            queformat   = "%2$.1f s", -- queue info format, formatted with queue size and interval
         }
     }, DEFAULT)
 
@@ -300,7 +333,15 @@ function Clean:OnInitialize()
 
     -- interface options stuff
     self.options = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("TimedClean", "Clean", "Timed")
-    self.options.default = function() self.db:ResetProfile() end
+    self.options.default = function()
+        self.db:ResetProfile()
+        self:Redraw()
+
+        for gid, fr in pairs(frames) do
+            fr:ClearAllPoints()
+            fr:SetPoint("CENTER")
+        end
+    end
 
     -- disable auto dump option
     local autodump = Timed.slash.args.autodump

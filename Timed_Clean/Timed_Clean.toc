@@ -6,10 +6,17 @@
 ## X-Website: https://github.com/Siarkowy/Timed
 ## X-Category: Combat
 ## X-License: BSD-2.0
+## Dependencies: Timed
 ## OptionalDeps: Ace3, SharedMedia
 ## SavedVariables: TimedCleanDB
 ## Version: 1.0.0
-## Dependencies: Timed
+
+# libs
+
+Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
+Libs\AceGUI-3.0-SharedMediaWidgets\AceGUI-3.0-SharedMediaWidgets.lua
+
+# core
 
 Clean.lua
 slash.lua

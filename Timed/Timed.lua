@@ -51,7 +51,8 @@ TIMED_OVERAGGRO     = 2
 TIMED_TANKING       = 1
 TIMED_INSECURE      = 3
 TIMED_SAFE          = 4
-TIMED_PULLAGGRO_T   = "Pull aggro"
+
+TIMED_PULLAGGRO_TEXT = "Pull aggro"
 
 -- Frequently used values
 local COMM_DELIM    = "\007"
