@@ -51,14 +51,6 @@ Timed.slash = {
             cmdHidden = true,
             order = 200
         },
-        warnings = {
-            name = "Warn on overaggro",
-            desc = "Toggle overaggro warnings on and off.",
-            type = "toggle",
-            get = "GetWarningsEnabled",
-            set = "SetWarningsEnabled",
-            order = 201
-        },
         threshold = {
             name = "Warning threshold",
             desc = "Set overaggro warning percent threshold. Timed will display a warning when warnings are enabled and passed this amount of aggro on current target.",
@@ -69,14 +61,41 @@ Timed.slash = {
             get = "GetWarningThreshold",
             set = "SetWarningThreshold",
             isPercent = true,
+            width = "full",
+            order = 201
+        },
+        warnings = {
+            name = "Warn on overaggro",
+            desc = "Toggle overaggro warnings on and off.",
+            type = "toggle",
+            get = "GetWarningsEnabled",
+            set = "SetWarningsEnabled",
             order = 202
         },
         autodump = {
-            name = "Auto dump",
+            name = "Auto dump to chat",
+            desc = "Displays simple threat overview to the chat frame.",
             type = "toggle",
             get = "GetAutoDumpEnabled",
             set = "SetAutoDumpEnabled",
             order = 203
+        },
+        logging = {
+            name = "Enable logging",
+            desc = "If enabled, Timed will store an event log, containing " ..
+                   "threat and targeting info. Access with /timed log.",
+            type = "toggle",
+            get = "IsLogging",
+            set = "SetLogging",
+            order = 204
+        },
+        verbose = {
+            name = "Verbose mode",
+            desc = "In verbose mode, logs are printed to third chat frame.",
+            type = "toggle",
+            get = "IsVerbose",
+            set = "SetVerbose",
+            order = 205
         },
         watch = {
             name = "Add gauge",
@@ -85,7 +104,7 @@ Timed.slash = {
             type = "input",
             set = "AddGaugeHelper",
             guiHidden = true,
-            order = 204
+            order = 206
         },
 
         -- Advanced
@@ -120,22 +139,6 @@ Timed.slash = {
             get = "GetQueryMessage",
             set = "SetQueryMessage",
             order = 303
-        },
-        logging = {
-            name = "Enable logging",
-            desc = "If enabled, Timed will store an event log, containing threat and targeting info.",
-            type = "toggle",
-            get = "IsLogging",
-            set = "SetLogging",
-            order = 304
-        },
-        verbose = {
-            name = "Verbose mode",
-            desc = "In verbose mode, logs are printed to default chat frame.",
-            type = "toggle",
-            get = "IsVerbose",
-            set = "SetVerbose",
-            order = 305
         },
 
         -- Gauges

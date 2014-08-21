@@ -12,3 +12,4 @@
 ## Dependencies: Timed
 
 Clean.lua
+slash.lua

@@ -294,4 +294,16 @@ function Clean:OnInitialize()
             queformat = "%2$.1f s", -- queue info format, formatted with queue size and interval
         }
     }, DEFAULT)
+
+    -- slash command
+    LibStub("AceConfig-3.0"):RegisterOptionsTable("TimedClean", self.slash)
+
+    -- interface options stuff
+    self.options = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("TimedClean", "Clean", "Timed")
+    self.options.default = function() self.db:ResetProfile() end
+
+    -- disable auto dump option
+    local autodump = Timed.slash.args.autodump
+    autodump.disabled = true
+    autodump.desc = autodump.desc .. " Timed Clean replaces this warnings with graphical threat gauges automatically."
 end
