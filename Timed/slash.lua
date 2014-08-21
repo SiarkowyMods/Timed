@@ -123,7 +123,7 @@ Timed.slash = {
         },
         logging = {
             name = "Enable logging",
-            desc = "If enabled, Timed will store an event log, containing threat, queue and version data info.",
+            desc = "If enabled, Timed will store an event log, containing threat and targeting info.",
             type = "toggle",
             get = "IsLogging",
             set = "SetLogging",
@@ -222,7 +222,8 @@ end
 function Timed:AddGaugeHelper(info, v)
     self:Printf(pcall(self.AddGauge, self, v ~= "" and v or "target", v == "")
         and "Gauge %q added successfully."
-        or "No unit selected or specified gauge already exists.", v)
+        or "No unit selected or specified gauge already exists.",
+        v ~= "" and v or UnitName("target") or UNKNOWN)
 end
 
 --- Lists active gauges to chat frame.
