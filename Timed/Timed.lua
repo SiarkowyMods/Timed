@@ -227,10 +227,8 @@ function Timed:OnEnable()
     self:RegisterEvent("PLAYER_TARGET_CHANGED")
     self:RegisterEvent("UNIT_FLAGS")
 
-    self:RegisterMessage("TIMED_COOLDOWN_UPDATE", self.Print)
     self:RegisterMessage("TIMED_TARGET_UPDATE")
     self:RegisterMessage("TIMED_THREAT_UPDATE")
-    self:RegisterMessage("TIMED_VERSION_UPDATE", self.Print)
 
     self:RegisterComm(COMM_PREFIX, "CHAT_MSG_ADDON")
 
@@ -433,6 +431,7 @@ end
 -- @param time (number) Query cooldown.
 function Timed:SetCooldown(player, time)
     cooldowns[assert(player)] = tonumber(time) or 0
+    self:SendMessage("TIMED_COOLDOWN_UPDATE", player, time)
 end
 
 --- Sets target GUID for specified player.

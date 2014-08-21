@@ -35,7 +35,7 @@ Timed.slash = {
             func = "Toggle",
             order = 101
         },
-        vercheck = {
+        versions = {
             name = "Version check",
             desc = "Perform group version check.",
             type = "execute",
@@ -264,10 +264,10 @@ function Timed:VersionCheck()
     self:Print("Version info:")
 
     for player, version in pairs(self.versions) do
-        self:Echo("   %s: %s", player, self.GetVersionString(version) or UNKNOWN)
+        self:Echo("   %s: |cff33ff33%s|r", player, self.GetVersionString(version) or UNKNOWN)
     end
 
-    if IsInGroup() then
+    if self.IsInGroup() then
         local maxid = UnitInRaid("player") and GetNumRaidMembers() or 4
         local unit  = UnitInRaid("player") and "raid" or "party"
 
@@ -275,7 +275,7 @@ function Timed:VersionCheck()
             local name = UnitName(unit .. i)
 
             if name and not self:GetVersion(name) then
-                self:Echo("   %s: %s", name, NONE)
+                self:Echo("   %s: |cffff3333%s|r", name, NONE)
             end
         end
     end
