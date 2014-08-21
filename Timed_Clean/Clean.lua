@@ -90,7 +90,7 @@ function Clean:CreateGaugeFrame(gid, displayName)
     num:SetFontObject(GameFontHighlight)
     num:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -8, -8)
     num:SetPoint("BOTTOMRIGHT", fr, "TOPRIGHT", -8, -18)
-    num:SetFormattedText(self.db.profile.queformat, 0, 10)
+    num:SetFormattedText(self.db.profile.queformat, 0, Timed.db.profile.interval)
     fr.num = num
 
     -- unit name
@@ -191,9 +191,13 @@ function Gauge:OnUpdate(guid, ...)
         frame.unit:SetText(name)
     end
 
-    if not pullaggro then
-        return
+    -- update interval
+    local interval = format(Clean.db.profile.queformat, self:GetQueueCount(), self:GetNominalInterval())
+    if frame.num:GetText() ~= interval then
+        frame.num:SetText(interval)
     end
+
+    if not pullaggro then return end
 
     pullaggro = pullaggro * factor
 
@@ -223,9 +227,7 @@ function Gauge:OnUpdate(guid, ...)
     end
 
     -- handle tool-tip
-    if gt:IsOwned(frame) then
-        self:OnEnter()
-    end
+    if gt:IsOwned(frame) then self:OnEnter() end
 end
 
 --- Mouse enter handler.
@@ -256,13 +258,6 @@ function Gauge:OnRelease()
 
     -- wipe user data
     for k, _ in pairs(self) do self[k] = nil end
-end
-
---- Returns nominal queue interval for currect gauge.
--- @return number - Nominal interval.
-function Gauge:GetNominalInterval()
-    local count = Timed:GetQueueCount(self:UnitGUID())
-    return count > 0 and Timed:GetQueryInterval() / count or 0
 end
 
 -- Initialization --------------------------------------------------------------
@@ -296,7 +291,7 @@ function Clean:OnInitialize()
             fscale = 1, -- frame scale
             fwidth = 200, -- frame width
             thrformat = "%#", -- threat number format, %# stands for shortened float
-            queformat = "%2$.1f s", -- queue info format
+            queformat = "%2$.1f s", -- queue info format, formatted with queue size and interval
         }
     }, DEFAULT)
 end

@@ -91,6 +91,19 @@ function Gauge:Print(f, ...)
     DEFAULT_CHAT_FRAME:AddMessage(format(f, ...))
 end
 
+--- Returns nominal queue interval for current gauge.
+-- @return number - Nominal interval.
+function Gauge:GetNominalInterval()
+    local count = self:GetQueueCount()
+    return Timed:GetQueryInterval() / (count > 0 and count or 1)
+end
+
+--- Returns queue size.
+-- @return number - Queue size.
+function Gauge:GetQueueCount()
+    return Timed:GetQueueCount(self:UnitGUID())
+end
+
 --- Returns unit GUID of the gauge.
 -- @return string|nil - Unit GUID.
 function Gauge:UnitGUID()

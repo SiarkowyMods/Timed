@@ -8,7 +8,7 @@
 ## X-License: BSD-2.0
 ## OptionalDeps: Ace3, SharedMedia
 ## SavedVariables: TimedCleanDB
-## Version: 1.0a
+## Version: 1.0.0
 ## Dependencies: Timed
 
 Clean.lua
