@@ -65,7 +65,7 @@ local
     autodump,       -- threat info dump to chat frame flag
     interval,       -- min. interval between threat queries per player
     message,        -- query message to be sent
-    channel,        -- query message channel    
+    channel,        -- query message channel
     threshold,      -- threshold for overaggro warnings
     log,            -- log table reference
     logging,        -- event logging flag
