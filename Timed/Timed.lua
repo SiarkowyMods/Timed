@@ -1,6 +1,7 @@
-﻿--
--- ACE ADDON PROLOG
---
+﻿--------------------------------------------------------------------------------
+-- Timed (c) 2011 by Siarkowy <http://siarkowy.net/timed>
+-- Released under the terms of BSD 2.0 license.
+--------------------------------------------------------------------------------
 
 Timed = AceLibrary("AceAddon-2.0"):new("AceEvent-2.0", "AceDB-2.0", "AceModuleCore-2.0", "AceConsole-2.0", "AceComm-2.0")
 

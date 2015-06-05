@@ -1,3 +1,8 @@
+--------------------------------------------------------------------------------
+-- Timed (c) 2011 by Siarkowy <http://siarkowy.net/timed>
+-- Released under the terms of BSD 2.0 license.
+--------------------------------------------------------------------------------
+
 local Timed = Timed
 
 local tinsert = tinsert

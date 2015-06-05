@@ -1,3 +1,8 @@
+--------------------------------------------------------------------------------
+-- Timed (c) 2011 by Siarkowy <http://siarkowy.net/timed>
+-- Released under the terms of BSD 2.0 license.
+--------------------------------------------------------------------------------
+
 local Timed = Timed
 local Fu = Timed:NewModule("Timed", "AceEvent-2.0", "FuBarPlugin-2.0")
 local tablet = AceLibrary("Tablet-2.0")
