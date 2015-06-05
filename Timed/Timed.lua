@@ -73,6 +73,10 @@ function Timed:OnEnable()
     self:BroadcastQueueJoin(self.target.guid)
 end
 
+function Timed.IsInGroup()
+    return UnitInRaid("player") or GetRealNumPartyMembers() > 0
+end
+
 function Timed:PLAYER_ENTERING_WORLD()
     self.raid = ( select(2, IsInInstance()) == "raid" )
 end

@@ -26,7 +26,8 @@ end
 local published = false
 
 function Timed:PARTY_MEMBERS_CHANGED()
-    local ingroup = UnitInRaid("player")
+    local ingroup = self.IsInGroup()
+
     if not ingroup then
         published = false
         return
