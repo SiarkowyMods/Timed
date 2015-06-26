@@ -1,3 +1,8 @@
+--------------------------------------------------------------------------------
+-- Timed (c) 2011 by Siarkowy <http://siarkowy.net/timed>
+-- Released under the terms of BSD 2.0 license.
+--------------------------------------------------------------------------------
+
 local Timed = Timed
 
 local SHEDULE_DELAY = 0.03
@@ -10,48 +15,48 @@ TimerFrame:Hide()
 local timer = 0
 
 local function TimerOnUpdate(self, elapsed)
-	timer = timer - elapsed
-	
-	if timer > 0 then return end
-	
-	TimerFrame:Hide()
-	timer = 0
-	
-	Timed:TriggerEvent("Timed_OnTimer")
+    timer = timer - elapsed
+
+    if timer > 0 then return end
+
+    TimerFrame:Hide()
+    timer = 0
+
+    Timed:TriggerEvent("Timed_OnTimer")
 end
 
 TimerFrame:SetScript("OnUpdate", TimerOnUpdate)
 
 function Timed:SheduleQueryThreat()
-	local time = self:QueueGetTime()
-	self:TimerSet(time + SHEDULE_DELAY)
-	self:TimerEnable()
+    local time = self:QueueGetTime()
+    self:TimerSet(time + SHEDULE_DELAY)
+    self:TimerEnable()
 end
 
 function Timed:TimerToggleActive(v)
-	if v then
-		TimerFrame:Show()
-	else
-		TimerFrame:Hide()
-	end
+    if v then
+        TimerFrame:Show()
+    else
+        TimerFrame:Hide()
+    end
 end
 
 function Timed:TimerDisable()
-	TimerFrame:Hide()
+    TimerFrame:Hide()
 end
 
 function Timed:TimerEnable()
-	TimerFrame:Show()
+    TimerFrame:Show()
 end
 
 function Timed:TimerIsActive()
-	return TimerFrame:IsShown()
+    return TimerFrame:IsShown()
 end
 
 function Timed:TimerReset()
-	self:TimerSet(0)
+    self:TimerSet(0)
 end
 
 function Timed:TimerSet(v)
-	timer = tonumber(v) or 0
+    timer = tonumber(v) or 0
 end
