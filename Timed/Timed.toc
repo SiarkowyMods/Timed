@@ -2,7 +2,7 @@
 ## Title: Timed
 ## Notes: Synchronized .debug threatlist data distributor particularly for raiding use by Siarkowy. Usage: /timed
 ## Author: Siarkowy
-## Version: 1.1.1
+## Version: 1.2.1
 ## SavedVariables: TimedDB
 
 embeds.xml
